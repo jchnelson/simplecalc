@@ -110,39 +110,12 @@ string single_calc(const string& s, const char c,
     return s;
 }
 
-
-
-
 double Calculator::calculate(const string& s)
 {
-    // I need to do more to parse the string in this
-    // function.  It can't even do 5 + 4 + 3 right now, it
-    // would return 9 in this case. So I need to do 5 + 4, then
-    // 9 + 3.  Also for 5 + 4 * 3, I need to be able to prioritize
-    // the multiplication.  so I guess I check for e first, do the
-    // operations and insert the value, then the same for * and /,
-    // then + and -, then when I have that all working, then
-    // I can think about parsing parenthesized expressions, which
-    // would of course come before all of that.
     
     string expr = s;
     string::size_type index1 = 0;
     string::size_type index2 = 0;
-
-    //char found_function;
-    // if I find 5 e 3 for example, I should only need to separate
-    // at most two other times, do the calculation, then concatenate
-    // three strings into one (two concats)
-    // 2 + 3 * 4 + 5 e 3 / 5
-    // 2 + 3 * 4 + 5 ---- e ---- 3 / 5
-    // store operation, check if left has operation in it. if it does,
-    // split off right side of it and that is now lhs.
-    // check if left has operation in it.  if it does, split off left 
-    // side and that is now rhs.  do lhs e rhs.
-    // 2 + 3 * 4 + RESULT / 5 should be the string now.
-    // I'll have to check for mul/div and add/sub at once and
-    // compare indexes then do the leftmost, then check again etc.
-    
     
     // do e, then */ together,  then +- together
 
@@ -172,32 +145,3 @@ double Calculator::calculate(const string& s)
     } 
     return std::stod(expr);
 }
-        
-    
-
-//double Calculator::calculate(const string& s)
-//{      
-    
-//    double ret = 0;
-    
-//    string::size_type index = 0;
-//    double lhs;
-//    double rhs;
-//    char found_function;
-//    for (const auto& fpair : arith)
-//    {
-        
-//        if ((index = s.find(fpair.first)) != string::npos)
-//        {
-//            found_function = fpair.first;
-//            break;
-//        }
-//    } 
-//    lhs = std::stod(string(s, 0, index));
-//    rhs = std::stod(string(s, index+1));
-    
-//    currval = ret = arith[found_function](lhs, rhs);
-    
-//    return ret;
-    
-//}
