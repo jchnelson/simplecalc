@@ -21,12 +21,19 @@ using std::function;
 
 bool entering_number = false;
 bool hanging_op = false;
+bool anything_entered = false;
+bool last_open_parenth = false;
+int open_parenth = 0;
+
 
 void clearResetFlags(QLabel*& top)
 {
     top->setText("0.00");
     entering_number = false;
     hanging_op = false;
+    anything_entered = false;
+    open_parenth = 0;
+    last_open_parenth = false;
 }
 
 void doCalc(QLabel*& top,
@@ -34,7 +41,7 @@ void doCalc(QLabel*& top,
 {
     if (entering_number)
     {
-        QString newtext = QString::number(c.calculate(top->text().toStdString()));
+        QString newtext = c.calculate(top->text().toStdString());
         top->setText(newtext);
     }
 }
@@ -54,6 +61,8 @@ void opPressed(QLabel*& top,
     }
     entering_number = false;
     hanging_op = true;
+    anything_entered = true;
+    last_open_parenth = false;
     
 }
 
@@ -61,7 +70,7 @@ void numberPressed(QLabel*& top,
                    std::pair<const char, QPushButton*>& bpair)
 {     // i guess map keys are always const, I forgot
     
-    if (entering_number || hanging_op)
+    if (entering_number || hanging_op || last_open_parenth)
     {
         QString newtext = top->text() + bpair.first;
         top->setText(newtext);
@@ -72,6 +81,51 @@ void numberPressed(QLabel*& top,
         top->setText(QString(bpair.first));
     }
     entering_number = true;
+    anything_entered = true;
+    last_open_parenth = false;
+}
+
+void openParenthPressed(QLabel*& top,
+                   std::pair<const char, QPushButton*>& bpair)
+{       // parentheses are valid when there's a hanging op,
+        // or when both flags are false
+    
+    if (anything_entered && (hanging_op ||
+            (!entering_number && !hanging_op) || last_open_parenth))
+    {
+        QString newtext = top->text() + bpair.first;
+        top->setText(newtext);
+        hanging_op = false;
+        entering_number = false;
+        last_open_parenth = true;
+        ++open_parenth;
+    }
+    else if (!anything_entered)
+    {
+        top->setText(QString(bpair.first));
+        hanging_op = false;
+        entering_number = false;
+        last_open_parenth = true;
+        ++open_parenth;      
+    }
+
+}
+
+void closeParenthPressed(QLabel*& top,
+                        std::pair<const char, QPushButton*>& bpair)
+{       // parentheses are valid when there's a hanging op,
+    // or when both flags are false
+    
+    if (open_parenth > 0 && (entering_number || (!entering_number && !hanging_op)))
+    {
+        QString newtext = top->text() + bpair.first;
+        top->setText(newtext);
+        hanging_op = false;
+        entering_number = true;
+        last_open_parenth = false;
+        --open_parenth;
+    }
+    
 }
 
 int main(int argc, char *argv[])
@@ -95,11 +149,11 @@ int main(int argc, char *argv[])
     Calculator bob;
     
     char keys[5][4] = {
-        {'e', ' ', 'C', '/'},
+        {'e', '(', ')', '/'},
         {'7', '8', '9', '*'},
         {'4', '5', '6', '-'},
         {'1', '2', '3', '+'},
-        {' ', '0', '.', '='},
+        {'C', '0', '.', '='},
         };
     
     std::map<const char, QPushButton*> buttons;
@@ -135,6 +189,14 @@ int main(int argc, char *argv[])
             QObject::connect(butpair.second,
                              &QPushButton::clicked,
                              [&] () mutable { clearResetFlags(toplabel); });
+        if (butpair.first == '(')
+            QObject::connect(butpair.second,
+                             &QPushButton::clicked,
+                             [&] () mutable { openParenthPressed(toplabel, butpair); });
+        if (butpair.first == ')')
+            QObject::connect(butpair.second,
+                             &QPushButton::clicked,
+                             [&] () mutable { closeParenthPressed(toplabel, butpair); });
     }
     
 

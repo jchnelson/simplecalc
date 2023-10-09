@@ -1,14 +1,17 @@
 #include "calculator.h"
 
 #include <map>
+#include <vector>
 #include <string>
 #include <functional>
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 #include <QDebug>
 
 using std::map;
+using std::vector;
 using std::function;
 using std::string;
 
@@ -37,7 +40,6 @@ std::pair<string,string> parse_expr_left(const string& s)
     size_t index = s.find_last_of("e*/+-");
     string lhs(s, 0, index+1);
     string rhs(s, index+1);
-    qInfo() << "string parsed as" << lhs << rhs;
     return {lhs, rhs};
     
 }
@@ -47,7 +49,6 @@ std::pair<string,string> parse_expr_right(const string& s)
     size_t index = s.find_first_of("e*/+-");
     string lhs(s, 0, index);
     string rhs(s, index);
-    qInfo() << "string parsed as" << lhs << rhs;
     return {lhs, rhs};
     
 }
@@ -61,6 +62,15 @@ bool check_expr(const string& s)
 string single_calc(const string& s, const char c,
                    function<double(double,double)> func)
 {
+    // negative numbers need to be handled.  Unary '-'
+    // should be identified by there being no number to the left of
+    // it, it should either be a parenthesis, another operator,
+    // or nothing. Unary '+' should be handled the same way if present
+    
+    // I might have to implement parentheses to implement negative
+    // numbers properly.  To parse an expression correctly, it would
+    // seem easiest to insert parentheses around the negative number
+    
     qInfo() << "string passed to single_calc was" << s;
     if (s.find(c) != string::npos)
     {
@@ -78,8 +88,6 @@ string single_calc(const string& s, const char c,
             auto lpair = parse_expr_left(lhs);
             l_tojoin = lpair.first;
             l_operand = lpair.second;
-            qInfo() << l_tojoin;
-            qInfo() << l_operand;
         } 
         else
             l_operand = lhs;
@@ -89,8 +97,6 @@ string single_calc(const string& s, const char c,
             auto rpair = parse_expr_right(rhs);
             r_tojoin = rpair.second;
             r_operand = rpair.first;
-            qInfo() << r_tojoin;
-            qInfo() << r_operand;
         }
         else
             r_operand = rhs;
@@ -99,26 +105,19 @@ string single_calc(const string& s, const char c,
         double r_oper = std::stod(r_operand);
         qInfo() << l_oper << c << r_oper;
         double result = func(l_oper, r_oper);
-        qInfo() << result;
         string res_s = std::to_string(result);
         qInfo() << res_s;
         qInfo() << l_tojoin + res_s + r_tojoin;
         
-        return l_tojoin + ' ' + res_s + ' ' + r_tojoin; // if they're empty that's fine
+        return l_tojoin + res_s + r_tojoin; // if they're empty that's fine
         
     }
     return s;
 }
 
-double Calculator::calculate(const string& s)
+string Calculator::do_order_op(const string& s)
 {
-    
     string expr = s;
-    string::size_type index1 = 0;
-    string::size_type index2 = 0;
-    
-    // do e, then */ together,  then +- together
-
     while (expr.find('e') != string::npos)
     {
         expr = single_calc(expr, 'e', arith['e']);
@@ -142,6 +141,80 @@ double Calculator::calculate(const string& s)
         }
         else
             expr = single_calc(expr, '-', arith['-']);
-    } 
-    return std::stod(expr);
+    }
+    return expr;
+}
+
+string Calculator::parse_parenth(const string& s)
+{
+    // this only runs if parentheses are found.  It is not yet known
+    // how many, or whether the expression is valid. Check for a valid expression
+    // first, then find subexpressions inside parentheses, which themselves
+    // contain no parentheses, then pass those to calculate?? I might have
+    // to rethink my flow afterward
+    qInfo() << "inside parse_parenth";
+    string expr = s;
+    string subexpr;
+    string expr_left;
+    string expr_right;
+    vector<size_t> openers;
+    
+    for (size_t i = 0; i != expr.size(); ++i)
+    {
+        
+        if (expr[i] == '(')
+        {
+            openers.push_back(i);
+        }
+        if (expr[i] == ')')
+        {
+            if (openers.empty())
+                throw std::runtime_error("Invalid Expression");
+            else
+            {
+                size_t subexpr_size = (i + 1) - openers.back() ;
+                subexpr = string(expr, openers.back(), subexpr_size);
+                expr_left = string(expr, 0, openers.back());
+                if (openers.back() + subexpr_size < expr.size())
+                    expr_right = string(expr, (openers.back() + subexpr_size));
+                qInfo() << "subexpression is" << subexpr;
+                subexpr = subexpr.substr(1, subexpr.size() -2);
+                qInfo() << expr_left << subexpr << expr_right;
+                if (subexpr.find_first_of("()") == string::npos)
+                {
+                    qInfo() << "no other parentheses";
+                    subexpr = do_order_op(subexpr);
+                    qInfo() << "processed subexpr as " << subexpr;
+                }
+                openers.pop_back();
+                break;
+            }
+        }
+    }
+    return expr_left + subexpr + expr_right;
+}
+
+QString Calculator::calculate(const string& s)
+{
+    
+    string expr = s;
+    qInfo() << "top of calculate";
+    int count = 0;
+    while (expr.find_first_of("()") != string::npos)
+    {
+        ++count;
+        qInfo() << "parentheses found" << expr;
+        expr = parse_parenth(expr);
+        if (count == 10) break;
+        
+    }
+    
+    expr = do_order_op(expr);
+    
+    // do e, then */ together,  then +- together
+
+    
+    qInfo() << expr;
+    qInfo() << QString::number(std::stod(expr), 'f', 3);
+    return QString::number(std::stod(expr), 'f', 3);
 }
