@@ -1,7 +1,6 @@
 #include <map>
 #include <string>
 #include <functional>
-#include <cmath>
 
 #include <QApplication>
 #include <QMainWindow>
@@ -22,6 +21,23 @@ using std::function;
 
 bool entering_number = false;
 bool hanging_op = false;
+
+void clearResetFlags(QLabel*& top)
+{
+    top->setText("0.00");
+    entering_number = false;
+    hanging_op = false;
+}
+
+void doCalc(QLabel*& top,
+            std::pair<const char, QPushButton*>& bpair, Calculator& c)
+{
+    if (entering_number)
+    {
+        QString newtext = QString::number(c.calculate(top->text().toStdString()));
+        top->setText(newtext);
+    }
+}
 
 void opPressed(QLabel*& top,
                std::pair<const char, QPushButton*>& bpair)
@@ -61,21 +77,13 @@ void numberPressed(QLabel*& top,
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    QMainWindow w;
-    
-    
+    QMainWindow w;  
     QWidget* bigboss = new QWidget(&w);
     w.setCentralWidget(bigboss);
 
-    
-    Calculator bob;
-    
     QGridLayout* glayout = new QGridLayout(bigboss);
     glayout->setContentsMargins(0,0,0,0);
     glayout->setSpacing(2);
-    
-    qInfo() << bob.calculate("23.4 * 5");
-    
     
     QLabel* toplabel = new QLabel("0.00");
     toplabel->setAlignment(Qt::AlignHCenter);
@@ -84,8 +92,10 @@ int main(int argc, char *argv[])
     toplabel->setFont(font);
     glayout->addWidget(toplabel,0,0,1,4);
     
+    Calculator bob;
+    
     char keys[5][4] = {
-        {'e', ' ', ' ', '/'},
+        {'e', ' ', 'C', '/'},
         {'7', '8', '9', '*'},
         {'4', '5', '6', '-'},
         {'1', '2', '3', '+'},
@@ -106,7 +116,7 @@ int main(int argc, char *argv[])
             glayout->addWidget(but, i+1, j);       
         }
     }
-    string ops = "+-*^/";
+    string ops = "+-*e/";
     for (auto& butpair : buttons)
     {
         if (isdigit(butpair.first) || butpair.first == '.')
@@ -117,10 +127,17 @@ int main(int argc, char *argv[])
             QObject::connect(butpair.second,
                              &QPushButton::clicked,
                              [&] () mutable { opPressed(toplabel, butpair); });
-    }  
+        if (butpair.first == '=')
+            QObject::connect(butpair.second,
+                             &QPushButton::clicked,
+                             [&] () mutable { doCalc(toplabel, butpair, bob); });
+        if (butpair.first == 'C')
+            QObject::connect(butpair.second,
+                             &QPushButton::clicked,
+                             [&] () mutable { clearResetFlags(toplabel); });
+    }
+    
 
     w.show();
     return a.exec();
 }
-
-

@@ -24,7 +24,7 @@ std::map<char, function<double(double,double)>> Calculator::make_arith()
     arith.insert({'-', sub});
     arith.insert({'*', mul});
     arith.insert({'/', div});
-    arith.insert({'^', exp});
+    arith.insert({'e', exp});
     
     return arith;
 }
@@ -33,7 +33,7 @@ double Calculator::calculate(const string& s)
 {
     double ret = 0;
     
-    string::size_type index;
+    string::size_type index = 0;
     double lhs;
     double rhs;
     char found_function;
