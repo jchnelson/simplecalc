@@ -13,7 +13,6 @@ public:
     QString calculate(const std::string&);
     
 private:
-    double currval = 0;
     std::map<char, std::function<double(double,double)>> make_arith();
     std::map<char, std::function<double(double,double)>> arith = make_arith();
     std::string do_order_op(const std::string& s);

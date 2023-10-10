@@ -82,20 +82,7 @@ void opPressed(QLabel*& top,
         hanging_op = true;
         anything_entered = true;
         last_open_parenth = false;
-    }
-//    if (entering_number)  // op only valid if number precedes
-//    {
-//        QString newtext = top->text()+ bpair.first;
-//        top->setText(newtext);
-//    }
-//    else if (!entering_number && !hanging_op)
-//    {
-//        QString newtext = top->text() + bpair.first;
-//        top->setText(newtext);    
-//    }
-    
-
-    
+    }  
 }
 
 void numberPressed(QLabel*& top,
@@ -120,9 +107,7 @@ void numberPressed(QLabel*& top,
 
 void openParenthPressed(QLabel*& top,
                    std::pair<const char, QPushButton*>& bpair)
-{       // parentheses are valid when there's a hanging op,
-        // or when both flags are false
-    
+{
     if (anything_entered && (hanging_op ||
             (!entering_number && !hanging_op) || last_open_parenth))
     {
@@ -143,14 +128,11 @@ void openParenthPressed(QLabel*& top,
         hanging_neg = false;
         ++open_parenth;      
     }
-
 }
 
 void closeParenthPressed(QLabel*& top,
                         std::pair<const char, QPushButton*>& bpair)
-{       // parentheses are valid when there's a hanging op,
-    // or when both flags are false
-    
+{  
     if (open_parenth > 0 && (entering_number || (!entering_number && !hanging_op)))
     {
         QString newtext = top->text() + bpair.first;
@@ -160,8 +142,7 @@ void closeParenthPressed(QLabel*& top,
         last_open_parenth = false;
         hanging_neg = false;
         --open_parenth;
-    }
-    
+    }  
 }
 
 int main(int argc, char *argv[])
@@ -234,8 +215,6 @@ int main(int argc, char *argv[])
                              &QPushButton::clicked,
                              [&] () mutable { closeParenthPressed(toplabel, butpair); });
     }
-    
-
     w.show();
     return a.exec();
 }

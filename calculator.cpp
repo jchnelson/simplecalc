@@ -37,7 +37,6 @@ std::map<char, function<double(double,double)>> Calculator::make_arith()
 
 bool check_unary_neg(const string& expr, size_t index)
 {
-
     if (index == 0 || !isdigit(expr[index-1]))
         return true;
     else
@@ -58,9 +57,6 @@ std::pair<string,string> parse_expr_left(const string& s)
         qInfo() << "first index was negative and there's another operator";
         size_t neg_index = index;
         index = s.substr(0,neg_index).find_last_of("e*/+-");
-        // this should actually be right, check from the beginning,
-        // "index" number of characters.  If index is 3, it's the 4th
-        // character so check the first 3 characters for the actual operator
     }
     // this index could still be a negative..
     qInfo() << "second left index" << index;
@@ -72,9 +68,7 @@ std::pair<string,string> parse_expr_left(const string& s)
 }
 
 std::pair<string,string> parse_expr_right(const string& s)
-{  // leave first operator on rhs
-    // if index is 0 here it doesn't mean shit
-    
+{  
     // at this point the correct operator would have been selected,
     // so if there's an operator at the first index then it's a negative
     // then the next potential binary operator MUST be an actual binary operator
@@ -83,8 +77,7 @@ std::pair<string,string> parse_expr_right(const string& s)
         return {s, string()};
     string lhs(s, 0, index);
     string rhs(s, index);
-    return {lhs, rhs};
-    
+    return {lhs, rhs};    
 }
 
 bool check_expr(const string& s)
@@ -177,9 +170,9 @@ string Calculator::do_order_op(const string& s)
         
         if (first_minus_is_neg && minus_index == string::npos
                                    && expr.find('+') == string::npos )
-            return expr;
+            return expr;  // then we're done
         
-        // if we're here, there's a binary operator to process
+        // if we're here, there's still a binary operator to process
 
         if (expr.find('+') < minus_index)  // if this is still first, doesn't matter if
                                            // second - is unary
@@ -193,7 +186,6 @@ string Calculator::do_order_op(const string& s)
         else  // then there was no negative found, or the binary - is still first
         {
             expr = single_calc(expr, '-', arith['-']);
-            // and here
         }
     }
     return expr;
@@ -217,7 +209,7 @@ string Calculator::parse_parenth(const string& s)
         }
         if (expr[i] == ')')
         {
-            if (openers.empty())
+            if (openers.empty())  // this should not be possible, but just in case
                 throw std::runtime_error("Invalid Expression");
             else
             {
@@ -254,14 +246,9 @@ QString Calculator::calculate(const string& s)
         ++count;
         qInfo() << "parentheses found" << expr;
         expr = parse_parenth(expr);
-        if (count == 10) break;
-        
-    }
-    
+        if (count == 10) break;        
+    }   
     expr = do_order_op(expr);
-    
-    // do e, then */ together,  then +- together
-
     
     qInfo() << expr;
     qInfo() << QString::number(std::stod(expr), 'f', 3);
