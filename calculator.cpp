@@ -35,18 +35,52 @@ std::map<char, function<double(double,double)>> Calculator::make_arith()
     return arith;
 }
 
+bool check_unary_neg(const string& expr, size_t index)
+{
+
+    if (index == 0 || !isdigit(expr[index-1]))
+        return true;
+    else
+        return false;
+}
+
 std::pair<string,string> parse_expr_left(const string& s)
-{ // leave last operand on lhs
+{ // leave last operator on lhs
     size_t index = s.find_last_of("e*/+-");
+    qInfo() << "initial left index" << index;
+    if (index == 0 && s[index] == '-')
+    {
+        return {string(), s};  // s is just a negative number
+    }
+    else if (check_unary_neg(s, index)) // still a negative,
+                                        // but check for other operator
+    {
+        qInfo() << "first index was negative and there's another operator";
+        size_t neg_index = index;
+        index = s.substr(0,neg_index).find_last_of("e*/+-");
+        // this should actually be right, check from the beginning,
+        // "index" number of characters.  If index is 3, it's the 4th
+        // character so check the first 3 characters for the actual operator
+    }
+    // this index could still be a negative..
+    qInfo() << "second left index" << index;
     string lhs(s, 0, index+1);
     string rhs(s, index+1);
+    qInfo() << lhs << rhs;
     return {lhs, rhs};
     
 }
 
 std::pair<string,string> parse_expr_right(const string& s)
-{  // leave first operand on rhs
-    size_t index = s.find_first_of("e*/+-");
+{  // leave first operator on rhs
+    // if index is 0 here it doesn't mean shit
+    
+    // at this point the correct operator would have been selected,
+    // so if there's an operator at the first index then it's a negative
+    // then the next potential binary operator MUST be an actual binary operator
+    size_t index = s.find_first_of("e*/+-", 1);
+    if (index == string::npos)
+        return {s, string()};
     string lhs(s, 0, index);
     string rhs(s, index);
     return {lhs, rhs};
@@ -55,6 +89,7 @@ std::pair<string,string> parse_expr_right(const string& s)
 
 bool check_expr(const string& s)
 {
+    // maybe add a check for negative here too???
     return all_of(s.cbegin(), s.cend(), [] (const char c)
                   { return isdigit(c) || isspace(c) || c == '.'; });
 }
@@ -62,29 +97,24 @@ bool check_expr(const string& s)
 string single_calc(const string& s, const char c,
                    function<double(double,double)> func)
 {
-    // negative numbers need to be handled.  Unary '-'
-    // should be identified by there being no number to the left of
-    // it, it should either be a parenthesis, another operator,
-    // or nothing. Unary '+' should be handled the same way if present
-    
-    // I might have to implement parentheses to implement negative
-    // numbers properly.  To parse an expression correctly, it would
-    // seem easiest to insert parentheses around the negative number
     
     qInfo() << "string passed to single_calc was" << s;
-    if (s.find(c) != string::npos)
+    // if first character is -, and char is -, look for second -
+    size_t index = s[0] == '-' && c == '-' ? s.find(c,1) : s.find(c);
+    if (index != string::npos)
     {
         qInfo() << c;
-        size_t index = s.find(c);
+ 
         string lhs(s, 0, index);
         string rhs(s, index+1);
         string l_tojoin;
         string r_tojoin;
         string l_operand;
         string r_operand;
+        
         if (!check_expr(lhs))
         {
-            qInfo() << "additional operator on left" << lhs;
+            qInfo() << "potential operator on left" << lhs;
             auto lpair = parse_expr_left(lhs);
             l_tojoin = lpair.first;
             l_operand = lpair.second;
@@ -93,7 +123,7 @@ string single_calc(const string& s, const char c,
             l_operand = lhs;
         if (!check_expr(rhs))
         {
-            qInfo() << "additional operator on right" << rhs;
+            qInfo() << "potential operator on right" << rhs;
             auto rpair = parse_expr_right(rhs);
             r_tojoin = rpair.second;
             r_operand = rpair.first;
@@ -117,7 +147,11 @@ string single_calc(const string& s, const char c,
 
 string Calculator::do_order_op(const string& s)
 {
+    
     string expr = s;
+    
+    // finding the operation will execute correctly until we get to +- loop
+    
     while (expr.find('e') != string::npos)
     {
         expr = single_calc(expr, 'e', arith['e']);
@@ -135,23 +169,38 @@ string Calculator::do_order_op(const string& s)
     while (expr.find('+') != string::npos ||
            (expr.find('-') != string::npos))
     {
-        if (expr.find('+') < expr.find('-'))
+        bool first_minus_is_neg = check_unary_neg(expr, expr.find('-'));
+
+        size_t minus_index = first_minus_is_neg ?
+                                 expr.find('-', expr.find('-')+1) : expr.find('-');
+        // minus_index still potentially is the index of a unary negative
+        
+        if (first_minus_is_neg && minus_index == string::npos
+                                   && expr.find('+') == string::npos )
+            return expr;
+        
+        // if we're here, there's a binary operator to process
+
+        if (expr.find('+') < minus_index)  // if this is still first, doesn't matter if
+                                           // second - is unary
         {
             expr = single_calc(expr, '+', arith['+']);
         }
-        else
+        else if (minus_index != expr.find('-'))
+        {
             expr = single_calc(expr, '-', arith['-']);
+        }
+        else  // then there was no negative found, or the binary - is still first
+        {
+            expr = single_calc(expr, '-', arith['-']);
+            // and here
+        }
     }
     return expr;
 }
 
 string Calculator::parse_parenth(const string& s)
 {
-    // this only runs if parentheses are found.  It is not yet known
-    // how many, or whether the expression is valid. Check for a valid expression
-    // first, then find subexpressions inside parentheses, which themselves
-    // contain no parentheses, then pass those to calculate?? I might have
-    // to rethink my flow afterward
     qInfo() << "inside parse_parenth";
     string expr = s;
     string subexpr;

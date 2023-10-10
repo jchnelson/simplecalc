@@ -21,6 +21,7 @@ using std::function;
 
 bool entering_number = false;
 bool hanging_op = false;
+bool hanging_neg = false;
 bool anything_entered = false;
 bool last_open_parenth = false;
 int open_parenth = 0;
@@ -31,6 +32,7 @@ void clearResetFlags(QLabel*& top)
     top->setText("0.00");
     entering_number = false;
     hanging_op = false;
+    hanging_neg = false;
     anything_entered = false;
     open_parenth = 0;
     last_open_parenth = false;
@@ -49,20 +51,50 @@ void doCalc(QLabel*& top,
 void opPressed(QLabel*& top,
                std::pair<const char, QPushButton*>& bpair)
 {
-    if (entering_number)  // op only valid if number precedes
+    if (bpair.first == '-' && !anything_entered && !hanging_neg)
     {
-        QString newtext = top->text() + ' ' + bpair.first + ' ';
+        qInfo() << "no append neg";
+        QString newtext(bpair.first);
         top->setText(newtext);
+        entering_number = true;
+        hanging_neg = true;
+        anything_entered = true;
+        last_open_parenth = false;
     }
-    else if (!entering_number && !hanging_op)
+    else if ( !hanging_neg && (hanging_op || !entering_number) )
     {
-        QString newtext = top->text() + ' ' + bpair.first + ' ';
-        top->setText(newtext);    
+        qInfo() << "append neg";
+        QString newtext = top->text() + bpair.first;
+        top->setText(newtext);
+        entering_number = true;
+        hanging_neg = true;
+        anything_entered = true;
+        last_open_parenth = false;
     }
-    entering_number = false;
-    hanging_op = true;
-    anything_entered = true;
-    last_open_parenth = false;
+    else if ( !hanging_op && ((bpair.first == '-' && !entering_number && !hanging_neg)
+                               || (entering_number && !hanging_neg) ))
+        // allow unary negative, but not in the middle of a number
+    {
+        qInfo() << "op";
+        QString newtext = top->text() + bpair.first;
+        top->setText(newtext);
+        entering_number = false;
+        hanging_op = true;
+        anything_entered = true;
+        last_open_parenth = false;
+    }
+//    if (entering_number)  // op only valid if number precedes
+//    {
+//        QString newtext = top->text()+ bpair.first;
+//        top->setText(newtext);
+//    }
+//    else if (!entering_number && !hanging_op)
+//    {
+//        QString newtext = top->text() + bpair.first;
+//        top->setText(newtext);    
+//    }
+    
+
     
 }
 
@@ -83,6 +115,7 @@ void numberPressed(QLabel*& top,
     entering_number = true;
     anything_entered = true;
     last_open_parenth = false;
+    hanging_neg = false;
 }
 
 void openParenthPressed(QLabel*& top,
@@ -98,6 +131,7 @@ void openParenthPressed(QLabel*& top,
         hanging_op = false;
         entering_number = false;
         last_open_parenth = true;
+        hanging_neg = false;
         ++open_parenth;
     }
     else if (!anything_entered)
@@ -106,6 +140,7 @@ void openParenthPressed(QLabel*& top,
         hanging_op = false;
         entering_number = false;
         last_open_parenth = true;
+        hanging_neg = false;
         ++open_parenth;      
     }
 
@@ -123,6 +158,7 @@ void closeParenthPressed(QLabel*& top,
         hanging_op = false;
         entering_number = true;
         last_open_parenth = false;
+        hanging_neg = false;
         --open_parenth;
     }
     
